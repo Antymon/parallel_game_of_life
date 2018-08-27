@@ -18,3 +18,5 @@ Asynchronous board is tinted to show area of influence of each thread.
 Initial state is injectable via property inspector and serialized on prefabs.
 
 At the moment off speaking initial state is "Gosper's Glider Gun"
+
+See wiki for little more details through example discussion.
