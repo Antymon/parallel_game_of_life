@@ -5,7 +5,7 @@ This is implemention of Conway's Game of Life in both synchronous (centralized) 
 
 It shows how extension of both state and rules for classical Game of Life can result in asychronous model which works well in distributed environments without explicit sychronization. In such setup there is no threat of deadlocks since synchronization is implicit via carefully designed model which is fault-tolerant and self repairing.
 
-This is barely a humble implemntation and all credits go to authors of following papers:
+This is barely a humble implementation and all credits go to authors of following papers:
 - Nehaniv, C. L. "Self reproduction in Asynchronous Cellular Automata"
 - Nehaniv, C. L. "Asynchronous automata networks can emulate any synchronous automata network"
 
