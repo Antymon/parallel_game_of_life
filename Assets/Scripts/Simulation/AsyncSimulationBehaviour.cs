@@ -3,17 +3,31 @@ using UnityEngine;
 
 public class AsyncSimulationBehaviour : SimulationBehaviour<AsyncGameOfLife>
 {
-    private static readonly byte NUM_THREADS = 4;
+    [SerializeField]
+    private byte numThreads = 16;
 
-    private static readonly int MULTI_PROCESS_BOARD_UPDATE_TIME_MS = (int)(SINGLE_PROCESS_BOARD_UPDATE_TIME_SEC / NUM_THREADS * 1000);
+    private int _multiThreadedUpdatetimeMs;
+
+    private Thread[] threads;
 
     protected override void Start()
     {
         base.Start();
 
-        for (byte i = 0; i < NUM_THREADS; ++i)
+        _multiThreadedUpdatetimeMs = (int)(SINGLE_PROCESS_BOARD_UPDATE_TIME_SEC / numThreads * 1000);
+
+        Debug.Log(string.Format("Thread will be woken up every {0} milliseconds", _multiThreadedUpdatetimeMs));
+
+        threads = new Thread[numThreads];
+
+        for (byte i = 0; i < numThreads; ++i)
         {
-            new Thread(() => ThrededSimulate(new Vector2Int(0, i * height / 4), new Vector2Int(width, (i + 1) * height / 4))).Start();
+            int fromY = i * height / numThreads;
+            int toY = (i + 1) * height / numThreads;
+            threads[i] = new Thread(() => ThrededSimulate(new Vector2Int(0, fromY), new Vector2Int(width, toY)));
+            threads[i].Start();
+
+            Debug.Log(string.Format("Thread[i:{0},y0:{1},y1:{2}]",i,fromY,toY));
         }
     }
 
@@ -22,7 +36,17 @@ public class AsyncSimulationBehaviour : SimulationBehaviour<AsyncGameOfLife>
         while (true)
         {
             _gameOfLife.ProcessBoard(new IntPoint2D() { x = from.x, y = from.y }, new IntPoint2D() { x = to.x, y = to.y });
-            Thread.Sleep(MULTI_PROCESS_BOARD_UPDATE_TIME_MS);
+            Thread.Sleep(_multiThreadedUpdatetimeMs);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        for (byte i = 0; i < numThreads; ++i)
+        {
+            threads[i].Interrupt();
+
+            Debug.Log(string.Format("Thread[i:{0}] interrupted! Ouch!", i));
         }
     }
 }
