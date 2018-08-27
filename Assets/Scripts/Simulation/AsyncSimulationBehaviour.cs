@@ -3,6 +3,10 @@ using UnityEngine;
 
 public class AsyncSimulationBehaviour : SimulationBehaviour<AsyncGameOfLife>
 {
+    private static readonly byte NUM_THREADS = 4;
+
+    private static readonly int MULTI_PROCESS_BOARD_UPDATE_TIME_MS = (int)(SINGLE_PROCESS_BOARD_UPDATE_TIME_SEC / NUM_THREADS * 1000);
+
     protected override void Start()
     {
         base.Start();
@@ -18,7 +22,7 @@ public class AsyncSimulationBehaviour : SimulationBehaviour<AsyncGameOfLife>
         while (true)
         {
             _gameOfLife.ProcessBoard(new IntPoint2D() { x = from.x, y = from.y }, new IntPoint2D() { x = to.x, y = to.y });
-            Thread.Sleep(250);
+            Thread.Sleep(MULTI_PROCESS_BOARD_UPDATE_TIME_MS);
         }
     }
 }

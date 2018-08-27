@@ -16,7 +16,7 @@ public class SyncSimulationBehaviour : SimulationBehaviour<SyncGameOfLife>
         while (true)
         {
             _gameOfLife.ProcessBoard();
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(SINGLE_PROCESS_BOARD_UPDATE_TIME_SEC);
         }
     }
 }

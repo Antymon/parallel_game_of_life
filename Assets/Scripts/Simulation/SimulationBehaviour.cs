@@ -17,6 +17,8 @@ public abstract class SimulationBehaviour<GameOfLifeType> : MonoBehaviour where 
     private Texture2D _texture;
     private SpriteRenderer _renderer;
 
+    protected static readonly float SINGLE_PROCESS_BOARD_UPDATE_TIME_SEC = 1f;
+
     protected virtual void Start()
     {
         _gameOfLife = new GameOfLifeType();
