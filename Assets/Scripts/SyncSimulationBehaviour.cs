@@ -1,47 +1,72 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
 using UnityEngine;
 
-
-
-public class Simulation : MonoBehaviour
+public abstract class SimulationBehaviour<GameOfLifeType> : MonoBehaviour where GameOfLifeType : IGameOfLife, new()
 {
-    Coroutine _co;
+    [SerializeField]
+    protected int width = 64;
+    [SerializeField]
+    protected int height = 64;
 
-    IGameOfLife syncGameOfLife;
-    Texture2D texture;
-    SpriteRenderer rend;
+    [SerializeField]
+    protected Vector2Int[] initialPattern;
 
-    int width = 8;
-    int height = 8;
+    private Coroutine _renderingCoroutine;
+    
+    protected GameOfLifeType _gameOfLife;
+    private Texture2D _texture;
+    private SpriteRenderer _renderer;
 
-    void Start()
+    protected virtual void Start()
     {
-        syncGameOfLife = new SyncGameOfLife(width, height);
+        _gameOfLife = new GameOfLifeType();
 
-        texture = new Texture2D(width, height);
+        var translatedPoints = new IntPoint2D[initialPattern.Length];
+        for (int i = 0; i < initialPattern.Length; i++)
+        {
+            translatedPoints[i] = new IntPoint2D() { x = initialPattern[i].x, y = initialPattern[i].y };
+        }
 
-        rend = GetComponent<SpriteRenderer>();
-        rend.sprite = Sprite.Create(texture, new Rect(0, 0, width, height), Vector2.zero);
+        _gameOfLife.Init(width, height, translatedPoints);
 
-        _co = StartCoroutine(Simulate());
+        _texture = new Texture2D(width, height);
+
+        _renderer = gameObject.AddComponent<SpriteRenderer>();
+        _renderer.sprite = Sprite.Create(_texture, new Rect(0, 0, width, height), Vector2.zero);
+
+        _renderingCoroutine = StartCoroutine(CoroutineRender());
+    }
+
+    protected IEnumerator CoroutineRender()
+    {
+        while (true)
+        {
+            var colors = _gameOfLife.GetColors();
+            _texture.SetPixels32(colors);
+            _texture.Apply(false);
+
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
+}
+
+public class SyncSimulationBehaviour : SimulationBehaviour<SyncGameOfLife>
+{
+    Coroutine _syncSimulationCoroutine;
+
+    protected override void Start()
+    {
+        base.Start();
+        _syncSimulationCoroutine = StartCoroutine(Simulate());
     }
 
     IEnumerator Simulate()
     {
         while (true)
         {
-            syncGameOfLife.ProcessBoard();
-            var colors = syncGameOfLife.GetColors();
-
-
-            texture.SetPixels32(colors);
-
-            // actually apply all SetPixels, don't recalculate mip levels
-            texture.Apply(false);
-
+            _gameOfLife.ProcessBoard();
             yield return new WaitForSeconds(1f);
         }
     }
@@ -49,7 +74,7 @@ public class Simulation : MonoBehaviour
 
 public interface ICellState
 {
-
+    void SetActive();
 }
 
 public interface ICellCoordinates
@@ -105,6 +130,11 @@ public struct SyncGameOfLifeState : ICellState
     {
         this.alive = alive;
     }
+
+    public void SetActive()
+    {
+        alive = true;
+    }
 }
 
 public struct AsyncGameOfLifeState : ICellState
@@ -125,6 +155,11 @@ public struct AsyncGameOfLifeState : ICellState
     public bool alive;
     public bool previousAlive;
     public Tense tense;
+
+    public void SetActive()
+    {
+        alive = true;
+    }
 }
 
 public struct IntPoint2D : ICellCoordinates
@@ -310,124 +345,104 @@ public class AsyncGameOfLifeRule : SyncGameOfLifeRule, IRule<AsyncGameOfLifeStat
 
 public interface IGameOfLife
 {
-    void ProcessBoard();
-    void ProcessBoard(IntPoint2D from, IntPoint2D to);
+    void Init(int width, int height, IntPoint2D[] initialState);
     Color32[] GetColors();
 }
-
-public class AsyncGameOfLife : IGameOfLife
+public abstract class GameOfLife<StateType, RuleType> : IGameOfLife where StateType : ICellState, new() where RuleType : IRule<StateType>, new()
 {
-    Toroidal2DBoard<AsyncGameOfLifeState> board; // , stagingBoard;
-    CellularAutomaton<AsyncGameOfLifeState, IntPoint2D> cellularAutomaton;
+    protected int _width;
+    protected int _height;
 
-    int width, height;
+    protected Toroidal2DBoard<StateType> _board; // , stagingBoard;
+    CellularAutomaton<StateType, IntPoint2D> _cellularAutomaton;
 
-    public AsyncGameOfLife(int width, int height)
-    {
-        this.width = width;
-        this.height = height;
-
-        board = new Toroidal2DBoard<AsyncGameOfLifeState>(new IntPoint2D() { x = width, y = height });
-        //stagingBoard = new Toroidal2DBoard<AsyncGameOfLifeState>(new IntPoint2D() { x = width, y = height });
-        cellularAutomaton = new CellularAutomaton<AsyncGameOfLifeState, IntPoint2D>(board, new AsyncGameOfLifeRule());
-
-        board.SetState(new IntPoint2D() { x = 0, y = 0 }, new AsyncGameOfLifeState() { alive = true });
-        board.SetState(new IntPoint2D() { x = 0, y = 1 }, new AsyncGameOfLifeState() { alive = true });
-        board.SetState(new IntPoint2D() { x = 0, y = 2 }, new AsyncGameOfLifeState() { alive = true });
-    }
-
-    public void ProcessBoard(IntPoint2D from, IntPoint2D to)
+    protected void ProcessBoard(IntPoint2D from, IntPoint2D to, Toroidal2DBoard<StateType> board)
     {
         for (int i = from.x; i < to.x; ++i)
         {
             for (int j = from.y; j < to.y; j++)
             {
                 var coords = new IntPoint2D() { x = i, y = j };
-                var nextState = cellularAutomaton.NextState(coords);
+                var nextState = _cellularAutomaton.NextState(coords);
                 board.SetState(coords, nextState);
             }
         }
     }
+    public virtual void Init(int width, int height, IntPoint2D[] initialState)
+    {
+        _width = width;
+        _height = height;
+
+        _board = new Toroidal2DBoard<StateType>(new IntPoint2D() { x = width, y = height });
+        _cellularAutomaton = new CellularAutomaton<StateType, IntPoint2D>(_board, new RuleType());
+
+        foreach (var point in initialState)
+        {
+            var newState = new StateType();
+            newState.SetActive();
+            _board.SetState(point, newState);
+        }
+    }
+
+    public abstract Color32 GetColorForState(StateType state);
 
     public Color32[] GetColors()
     {
-        Color32[] colors = new Color32[width * height];
+        Color32[] colors = new Color32[_width * _height];
 
-        for (int i = 0; i < width; i++)
+        for (int i = 0; i < _width; i++)
         {
-            for (int j = 0; j < height; j++)
+            for (int j = 0; j < _height; j++)
             {
-                var state = board.GetState(new IntPoint2D() { x = i, y = j });
+                var state = _board.GetState(new IntPoint2D() { x = i, y = j });
 
-                colors[i * height + j] = state.previousAlive?state.alive?Color.blue:Color.yellow:state.alive?Color.black:Color.white;
+                colors[i * _height + j] = GetColorForState(state);
             }
         }
 
         return colors;
     }
+}
 
+public class AsyncGameOfLife : GameOfLife<AsyncGameOfLifeState, AsyncGameOfLifeRule>
+{
     public void ProcessBoard()
     {
         throw new NotImplementedException();
     }
-}
 
-public class SyncGameOfLife : IGameOfLife
-{
-    Toroidal2DBoard<SyncGameOfLifeState> board, stagingBoard;
-    CellularAutomaton<SyncGameOfLifeState, IntPoint2D> cellularAutomaton;
-
-    int width, height;
-
-    public SyncGameOfLife(int width, int height)
+    public override Color32 GetColorForState(AsyncGameOfLifeState state)
     {
-        this.width = width;
-        this.height = height;
-
-        board = new Toroidal2DBoard<SyncGameOfLifeState>(new IntPoint2D() { x = width, y = height });
-        stagingBoard = new Toroidal2DBoard<SyncGameOfLifeState>(new IntPoint2D() { x = width, y = height });
-        cellularAutomaton = new CellularAutomaton<SyncGameOfLifeState,IntPoint2D>(board, new SyncGameOfLifeRule());
-
-        board.SetState(new IntPoint2D() { x = 0, y = 0 }, new SyncGameOfLifeState() { alive = true });
-        board.SetState(new IntPoint2D() { x = 0, y = 1}, new SyncGameOfLifeState() { alive = true });
-        board.SetState(new IntPoint2D() { x = 0, y = 2},new SyncGameOfLifeState() { alive = true });
-    }
-   
-    public void ProcessBoard()
-    {
-        var size = new IntPoint2D() { x = width, y = height };
-        ProcessBoard(new IntPoint2D(), size);
-        board.Copy(stagingBoard, new IntPoint2D(), size);
+        return state.previousAlive? state.alive? Color.blue: Color.yellow : state.alive? Color.black: Color.white;
     }
 
     public void ProcessBoard(IntPoint2D from, IntPoint2D to)
     {
-        for (int i = from.x; i < to.x; ++i)
-        {
-            for (int j = from.y; j < to.y; j++)
-            {
-                var coords = new IntPoint2D() { x = i, y = j };
-                var nextState = cellularAutomaton.NextState(coords);
-                stagingBoard.SetState(coords, nextState);
-            }
-        }
+        ProcessBoard(from, to, _board);
+    }
+}
+
+public class SyncGameOfLife : GameOfLife<SyncGameOfLifeState, SyncGameOfLifeRule>
+{
+    private Toroidal2DBoard<SyncGameOfLifeState> _stagingBoard;
+
+    public override void Init(int width, int height, IntPoint2D[] initialState)
+    {
+        base.Init(width, height, initialState);
+        _stagingBoard = new Toroidal2DBoard<SyncGameOfLifeState>(new IntPoint2D() { x = width, y = height });
+    }
+    public void ProcessBoard()
+    {
+        IntPoint2D from = new IntPoint2D();
+        IntPoint2D to = new IntPoint2D() { x = _width, y = _height };
+
+        ProcessBoard(from, to, _stagingBoard);
+        _board.Copy(_stagingBoard, from, to);
     }
 
-    public Color32[] GetColors()
+    public override Color32 GetColorForState(SyncGameOfLifeState state)
     {
-        Color32[] colors = new Color32[width * height];
-
-        for (int i = 0; i < width; i++)
-        {
-            for (int j = 0; j < height; j++)
-            {
-                var state = board.GetState(new IntPoint2D() { x = i, y = j });
-
-                colors[i * height + j] = state.alive ? Color.black : Color.white;
-            }
-        }
-
-        return colors;
+        return state.alive? Color.black: Color.white;
     }
 }
 
