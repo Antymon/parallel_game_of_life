@@ -65,7 +65,7 @@ public class AsyncGameOfLifeRule : SyncGameOfLifeRule, IRule<AsyncGameOfLifeStat
     {
         SyncGameOfLifeState[] syncGameOfLifeStates = new SyncGameOfLifeState[neigboursStates.Length];
 
-        for (int i = 0; i < neigboursStates.Length; i++)
+        for (int i = 0; i < neigboursStates.Length; ++i)
         {
             if (neigboursStates[i].tense == AsyncGameOfLifeState.Tense.Present)
             {

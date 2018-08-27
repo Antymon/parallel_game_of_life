@@ -17,7 +17,7 @@ public abstract class GameOfLife<StateType, RuleType> : IGameOfLife where StateT
     {
         for (int i = from.x; i < to.x; ++i)
         {
-            for (int j = from.y; j < to.y; j++)
+            for (int j = from.y; j < to.y; ++j)
             {
                 var coords = new IntPoint2D() { x = i, y = j };
                 var nextState = _cellularAutomaton.NextState(coords);
@@ -47,9 +47,9 @@ public abstract class GameOfLife<StateType, RuleType> : IGameOfLife where StateT
     {
         Color32[] colors = new Color32[_width * _height];
 
-        for (int i = 0; i < _width; i++)
+        for (int i = 0; i < _width; ++i)
         {
-            for (int j = 0; j < _height; j++)
+            for (int j = 0; j < _height; ++j)
             {
                 var state = _board.GetState(new IntPoint2D() { x = i, y = j });
 

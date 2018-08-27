@@ -24,7 +24,7 @@ public abstract class SimulationBehaviour<GameOfLifeType> : MonoBehaviour where 
         _gameOfLife = new GameOfLifeType();
 
         var translatedPoints = new IntPoint2D[initialPattern.Length];
-        for (int i = 0; i < initialPattern.Length; i++)
+        for (int i = 0; i < initialPattern.Length; ++i)
         {
             translatedPoints[i] = new IntPoint2D() { x = initialPattern[i].x, y = initialPattern[i].y };
         }

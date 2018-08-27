@@ -17,7 +17,7 @@ public class Toroidal2DBoard<StateType> : IBoard<StateType, IntPoint2D> where St
         height = dimensions.y;
 
         board = new StateType[width][];
-        for (int i = 0; i < board.Length; i++)
+        for (int i = 0; i < board.Length; ++i)
         {
             board[i] = new StateType[height];
         }
@@ -70,7 +70,7 @@ public class Toroidal2DBoard<StateType> : IBoard<StateType, IntPoint2D> where St
     {
         for (int i = from.x; i < to.x; ++i)
         {
-            for (int j = from.y; j < to.y; j++)
+            for (int j = from.y; j < to.y; ++j)
             {
                 var coords = new IntPoint2D() { x = i, y = j };
 

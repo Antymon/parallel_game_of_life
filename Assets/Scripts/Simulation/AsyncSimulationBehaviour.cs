@@ -11,10 +11,10 @@ public class AsyncSimulationBehaviour : SimulationBehaviour<AsyncGameOfLife>
     {
         base.Start();
 
-        new Thread(() => ThrededSimulate(Vector2Int.zero, new Vector2Int(width, height / 4))).Start();
-        new Thread(() => ThrededSimulate(new Vector2Int(0, height / 4), new Vector2Int(width, height / 2))).Start();
-        new Thread(() => ThrededSimulate(new Vector2Int(0, height / 2), new Vector2Int(width, height * 3 / 4))).Start();
-        new Thread(() => ThrededSimulate(new Vector2Int(0, height * 3 / 4), new Vector2Int(width, height))).Start();
+        for (byte i = 0; i < NUM_THREADS; ++i)
+        {
+            new Thread(() => ThrededSimulate(new Vector2Int(0, i * height / 4), new Vector2Int(width, (i + 1) * height / 4))).Start();
+        }
     }
 
     void ThrededSimulate(Vector2Int from, Vector2Int to)
