@@ -14,6 +14,8 @@ public class AsyncSimulationBehaviour : SimulationBehaviour<AsyncGameOfLife>
     {
         base.Start();
 
+        _gameOfLife.SetNumberOfBackgroundColors(numThreads);
+
         _multiThreadedUpdatetimeMs = (int)(SINGLE_PROCESS_BOARD_UPDATE_TIME_SEC / numThreads * 1000);
 
         Debug.Log(string.Format("Thread will be woken up every {0} milliseconds", _multiThreadedUpdatetimeMs));
