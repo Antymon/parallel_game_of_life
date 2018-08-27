@@ -41,7 +41,7 @@ public abstract class GameOfLife<StateType, RuleType> : IGameOfLife where StateT
         }
     }
 
-    protected abstract Color32 GetColorForState(StateType state);
+    protected abstract Color32 GetColorForState(StateType state, int x, int y);
 
     public virtual Color32[] GetColors()
     {
@@ -53,7 +53,7 @@ public abstract class GameOfLife<StateType, RuleType> : IGameOfLife where StateT
             {
                 var state = _board.GetState(new IntPoint2D() { x = i, y = j });
 
-                colors[i * _height + j] = GetColorForState(state);
+                colors[i * _height + j] = GetColorForState(state, i, j);
             }
         }
 
@@ -63,44 +63,26 @@ public abstract class GameOfLife<StateType, RuleType> : IGameOfLife where StateT
 
 public class AsyncGameOfLife : GameOfLife<AsyncGameOfLifeState, AsyncGameOfLifeRule>
 {
-    private Color32[] backgroundColors;
+    private Color32[] _backgroundColors;
 
     public override void Init(int width, int height, IntPoint2D[] initialState)
     {
         base.Init(width, height, initialState);
-        backgroundColors = new Color32[1];
-        backgroundColors[0] = Color.white;
+        _backgroundColors = new Color32[1];
+        _backgroundColors[0] = Color.white;
     }
 
     public void SetNumberOfBackgroundColors(byte num)
     {
-        backgroundColors = new Color32[num];
+        _backgroundColors = new Color32[num];
 
         for (int i = 0; i < num; ++i)
         {
-            backgroundColors[i] = Color32.Lerp(new Color(Random.value, Random.value, Random.value),Color.white , 0.75f);
+            _backgroundColors[i] = Color32.Lerp(new Color(Random.value, Random.value, Random.value),Color.white , 0.75f);
         }
     }
 
-    public override Color32[] GetColors()
-    {
-        Color32[] colors = new Color32[_width * _height];
-
-        for (int i = 0; i < _width; ++i)
-        {
-            for (int j = 0; j < _height; ++j)
-            {
-                var state = _board.GetState(new IntPoint2D() { x = i, y = j });
-
-                colors[i * _height + j] = GetColorForState(state,j);
-            }
-        }
-
-        return colors;
-    }
-
-
-    private Color32 GetColorForState(AsyncGameOfLifeState state, int y)
+    protected override Color32 GetColorForState(AsyncGameOfLifeState state, int x, int y)
     {
         if (state.previousAlive)
         {
@@ -121,17 +103,11 @@ public class AsyncGameOfLife : GameOfLife<AsyncGameOfLifeState, AsyncGameOfLifeR
             }
             else
             {
-                Color32 backGroundColor = backgroundColors[(int)(y / (float)_height * backgroundColors.Length)];
+                Color32 backGroundColor = _backgroundColors[(int)(y / (float)_height * _backgroundColors.Length)];
                 return backGroundColor;
             }
         }
     }
-
-    protected override Color32 GetColorForState(AsyncGameOfLifeState state)
-    {
-        throw new System.NotImplementedException();
-    }
-
 
     public void ProcessBoard(IntPoint2D from, IntPoint2D to)
     {
@@ -157,7 +133,7 @@ public class SyncGameOfLife : GameOfLife<SyncGameOfLifeState, SyncGameOfLifeRule
         _board.Copy(_stagingBoard, from, to);
     }
 
-    protected override Color32 GetColorForState(SyncGameOfLifeState state)
+    protected override Color32 GetColorForState(SyncGameOfLifeState state, int x, int y)
     {
         return state.alive ? Color.black : Color.white;
     }
